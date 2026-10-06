@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: campusclub-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - campusclub-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: campusclub-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - campusclub-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: campusclub-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongodb:27017/club_management
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=production_jwt_super_secret_key_change_in_prod_12345
+      - JWT_ACCESS_EXPIRY=7d
+      - JWT_REFRESH_EXPIRY=30d
+      - CLIENT_URL=http://localhost:3000
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - campusclub-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: campusclub-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - campusclub-network
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  campusclub-network:
+    driver: bridge
